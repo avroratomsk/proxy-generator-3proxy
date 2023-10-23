@@ -32,7 +32,29 @@ def get_proxy_list():
     return response_html.split('\r')
 
 
+def get_trusted_ip_list():
+    headers = {'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_11_5) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/50.0.2661.102 Safari/537.36'}
+    response = requests.get('https://xn----otbbagxddjeiea.xn--p1ai/tasks/checkUsers/', headers=headers)
+    response_html = response.text.replace('\n', '')
+
+    return response_html.split('<br>')
+
+
 def config_gen(checking_result):
+
+    trusted_ip_list = get_trusted_ip_list()
+    trusted_ip_str = ''
+
+    i = 0
+
+    for trusted_ip in trusted_ip_list:
+        if trusted_ip != "":
+            if i > 0:
+                trusted_ip_str += ', ' + str(trusted_ip)
+            else:
+                trusted_ip_str += trusted_ip
+            i += 1
+
     server_ip = requests.get('https://ifconfig.me/ip').text
     server_port = 49152
 
@@ -63,7 +85,7 @@ def config_gen(checking_result):
                 if i > 0:
                     config_file.write('flush\n')
 
-                config_file.write('allow *\n')
+                config_file.write('allow * ' + trusted_ip_str + '\n')
                 config_file.write('parent 1000 socks5 ' + current_proxy[0] + ' ' + current_proxy[1] + '\n')
                 config_file.write('proxy -n -p' + str(server_port) + '\n\n')
 
@@ -76,18 +98,18 @@ def config_gen(checking_result):
 if __name__ == '__main__':
     proxy_list = get_proxy_list()
 
-    p = Pool(15)
+    p = Pool(30)
     checking_result = p.map(get_location, proxy_list)
 
     config_gen(checking_result)
 
-    url = 'https://xn----otbbagxddjeiea.xn--p1ai/tasks/addNewProxy/'
-    headers = {'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_11_5) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/50.0.2661.102 Safari/537.36'}
+    # url = 'https://xn----otbbagxddjeiea.xn--p1ai/tasks/addNewProxy/'
+    # headers = {'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_11_5) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/50.0.2661.102 Safari/537.36'}
 
-    fp = open('proxy_list.txt', 'rb')
+    # fp = open('proxy_list.txt', 'rb')
 
-    files = {'file': fp}
+    # files = {'file': fp}
 
-    resp = requests.post(url, files=files, headers=headers)
-    fp.close()
-    print(resp.text)
+    # resp = requests.post(url, files=files, headers=headers)
+    # fp.close()
+    # print(resp.text)
