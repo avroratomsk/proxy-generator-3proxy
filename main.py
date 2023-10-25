@@ -3,27 +3,48 @@ import requests
 
 
 def get_location(proxy):
-    proxy = {'https': proxy}
+    
+    proxies = {
+        'http' : proxy,
+        'https' : proxy
+    }
 
-    if proxy['https'] != '':
+    if proxies['http'] != '':
         try:
-            response = requests.get('https://whoer.net/v2/geoip2-city', headers={'Accept': 'application/json'}, proxies=proxy, timeout=5)
+            response = requests.get('https://whoer.net/v2/geoip2-city', headers={'Accept': 'application/json'}, proxies=proxies, timeout=15)
             response_json = response.json()
             location = str(response_json['subdivision1_name']).replace('́с', 'с') + '|' + str(response_json['city_name']).replace('́с', 'с')
 
             if str(response_json['country_code']) == 'RU':
-                if str(response_json['subdivision1_name']) != 'None' or str(response_json['city_name']) != 'None':
-                    return str(proxy['https']) + '|' + location
+                if str(response_json['subdivision1_name']) != 'None' and str(response_json['city_name']) != 'None':
+                    # print(str(proxies['http']) + '|' + location)
+                    return str(proxies['http']) + '|' + location
 
         except Exception as e:
             pass
 
 
-def get_proxy_list():
-    response = requests.get('https://proxy-bunker.com/api2.php')
-    response_html = response.text.replace('\n', '')
+def get_proxy_list(proxy_type):
 
-    return response_html.split('\r')
+    response = requests.get('https://proxy-bunker.com/api2.php')
+
+    # if proxy_type == 'socks':
+    #     response = requests.get('https://api.best-proxies.ru/proxylist.txt?key=7cca8d3696dfcfb9b11082f074cc4af1&type=socks4,socks5&google=1&country=ru&limit=0')
+    # else:
+    #     response = requests.get('https://api.best-proxies.ru/proxylist.txt?key=7cca8d3696dfcfb9b11082f074cc4af1&type=http,https&google=1&country=ru&limit=0')
+    
+    response_html = response.text.replace('\n', '').split('\r')
+
+    proxy_list = []
+
+    for proxy in response_html:
+        if proxy_type == 'socks':
+            proxy_list.append("socks5://" + proxy)
+        else:
+            proxy_list.append(proxy)
+
+
+    return proxy_list
 
 
 def get_trusted_ip_list():
@@ -50,7 +71,7 @@ def config_gen(checking_result):
             i += 1
 
     server_ip = requests.get('https://ifconfig.me/ip').text
-    server_port = 49152
+    server_port = 10000
 
     config_file = open('3proxy.cfg', 'w+')
 
@@ -99,7 +120,16 @@ def config_gen(checking_result):
 
 
 if __name__ == '__main__':
-    proxy_list = get_proxy_list()
+
+    proxy_types = ['socks'] #'http', 
+
+    proxy_list = []
+
+    for proxy_type in proxy_types:
+        proxy_list.append(get_proxy_list(proxy_type))
+
+        for proxy in get_proxy_list(proxy_type):
+            proxy_list.append(proxy)
 
     p = Pool(30)
     checking_result = p.map(get_location, proxy_list)
